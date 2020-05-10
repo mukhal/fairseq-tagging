@@ -326,6 +326,21 @@ def bert_large_architecture(args):
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 4096)
     bert_base_architecture(args)
 
+## added tiny for experiments and debugging
+@register_model_architecture('masked_lm', 'bert_tiny')
+def bert_tiny_architecture(args):
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
+    args.encoder_layers = getattr(args, 'encoder_layers', 2)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 2)
+
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 64)
+    args.share_encoder_input_output_embed = getattr(args, 'share_encoder_input_output_embed', False)
+    args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
+    args.no_token_positional_embeddings = getattr(args, 'no_token_positional_embeddings', False)
+    args.num_segment = getattr(args, 'num_segment', 2)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
+    bert_base_architecture(args)
 
 @register_model_architecture('masked_lm', 'xlm_base')
 def xlm_architecture(args):
