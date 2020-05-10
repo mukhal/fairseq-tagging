@@ -28,6 +28,77 @@ logging.basicConfig(
 )
 logger = logging.getLogger('fairseq_cli.preprocess')
 
+def convert_seqtag_format_to_src_tgt(files_dir):
+    """
+    Converts earch sequence tagging file to a source and target format. 
+    For example :
+        West NNP B-NP B-MISC
+        Indian NNP I-NP I-MISC
+        all-rounder NN I-NP O
+        Phil NNP I-NP B-PER
+        Simmons NNP I-NP I-PER
+        . . O O
+
+        is converted two files:
+        *.source:
+            West Indian all-rounder Phil Simmons .
+        and *.target :
+            B-MISC I-MISC O B-PER I PER O
+
+    """
+
+    out_dir = os.path.join(files_dir, "fseq-outputs")
+    
+    # create output directory if not exists
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    for split in ['train', 'valid', 'test']:
+        path = os.path.join(files_dir, split)
+        
+        if not os.path.exists(path):
+            raise FileExistsError(path)
+        
+        f = open(path)
+        data = []
+        sentence = []
+        label = []
+        
+        for line in f:
+            if not line.strip() or len(line) == 0 or line.startswith('-DOCSTART') or line[0] == "\n" or line[0] == '.':
+                if len(sentence) > 0:
+                    data.append((sentence, label))
+                    sentence = []
+                    label = []
+                continue
+
+            splits = line.split()
+            word, tag = splits[0], splits[-1]
+            sentence.append(word.strip())
+            label.append(tag.strip())
+
+        if len(sentence) > 0:
+            data.append((sentence, label))
+            sentence = []
+            label = []
+        
+
+        # write output
+        outsrc_path = os.path.join(out_dir, '{}.source'.format(split))
+        outtgt_path = os.path.join(out_dir, '{}.target'.format(split))
+        f_outsrc = open(outsrc_path, 'w')
+        f_outtgt = open(outtgt_path, 'w')
+
+        for src, tgt in data:
+            assert len(src) == len(tgt)
+            f_outsrc.write(' '.join(src)+ '\n')
+            f_outtgt.write(' '.join(tgt) + '\n')
+
+        logger.info("Wrote source, target to {} {}".format(outsrc_path, outtgt_path))
+    return out_dir
+        
+
+
 
 def main(args):
     utils.import_user_module(args)
@@ -40,6 +111,17 @@ def main(args):
     logger.info(args)
 
     task = tasks.get_task(args.task)
+
+    # TODO: check base if task == seqtag
+    assert args.seqtag_data_dir is not None, "you must provide directory for original sequence tagging data"
+    src_tgt_dir = convert_seqtag_format_to_src_tgt(args.seqtag_data_dir)
+    
+    args.trainpref = os.path.join(src_tgt_dir, 'train')
+    args.validpref = os.path.join(src_tgt_dir, 'valid')
+    args.testpref = os.path.join(src_tgt_dir, 'test')
+
+    args.source_lang = 'source'
+    args.target_lang = 'target'
 
     def train_path(lang):
         return "{}{}".format(args.trainpref, ("." + lang) if lang else "")
@@ -356,6 +438,7 @@ def get_offsets(input_file, num_workers):
 
 def cli_main():
     parser = options.get_preprocessing_parser()
+    parser.add_argument('--seqtag-data-dir',default=None, type=str)
     args = parser.parse_args()
     main(args)
 
