@@ -129,7 +129,6 @@ class SeqEncoder(FairseqEncoder):
     def __init__(self, args, source_dictionary, target_dictionary):
         super().__init__(source_dictionary)
 
-        assert source_dictionary.pad() == target_dictionary.pad()
         self.padding_idx = source_dictionary.pad()
         self.vocab_size = source_dictionary.__len__()
         self.n_labels = target_dictionary.__len__()
@@ -230,7 +229,6 @@ class SeqEncoder(FairseqEncoder):
             x = self.embed_out(x)
             x = x + self.output_learned_bias
     
-
         return x, {
             'inner_states': inner_states,
             'pooled_output': pooled_output,
