@@ -4,9 +4,9 @@
 
 ## Tasks
 
-- [x] F1 Metric on validation using Seqeval (Done)
-- [ ] Save Best Model on validation data according to F1 Score not loss
-- [ ] Predict script
+- [x] log F1 metric on validation using Seqeva
+- [ ] save best model on validation data according to F1 score not loss
+- [ ] predict.py script
 - [ ] load and finetune pretrained BERT or RoBERTa 
 - [ ] LSTM models
 
