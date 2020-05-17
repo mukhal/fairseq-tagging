@@ -8,7 +8,7 @@ import json
 import itertools
 import logging
 import os
-
+import torch 
 import numpy as np
 
 from fairseq import metrics, options, utils
@@ -171,8 +171,8 @@ class SeqTaggingTask(FairseqTask):
 
         # options for reporting F1 Score during validation
 
-        parser.add_argument('--eval-f1', action='store_true',
-                            help='evaluation with F1 score')
+        parser.add_argument('--clf-report', action='store_true',
+                            help='whether to print detailed classification report during validation')
 
         # fmt: on
 
@@ -238,75 +238,39 @@ class SeqTaggingTask(FairseqTask):
             truncate_source=self.args.truncate_source,
         )
 
-
     def build_dataset_for_inference(self, src_tokens, src_lengths):
         return LanguagePairDataset(src_tokens, src_lengths, self.source_dictionary)
 
     def build_model(self, args):
         model = super().build_model(args)
-        if getattr(args, 'eval_bleu', False):
-            assert getattr(args, 'eval_bleu_detok', None) is not None, (
-                '--eval-bleu-detok is required if using --eval-bleu; '
-                'try --eval-bleu-detok=moses (or --eval-bleu-detok=space '
-                'to disable detokenization, e.g., when using sentencepiece)'
-            )
-            detok_args = json.loads(getattr(args, 'eval_bleu_detok_args', '{}') or '{}')
-            self.tokenizer = encoders.build_tokenizer(Namespace(
-                tokenizer=getattr(args, 'eval_bleu_detok', None),
-                **detok_args
-            ))
-
-            gen_args = json.loads(getattr(args, 'eval_bleu_args', '{}') or '{}')
-            self.sequence_generator = self.build_generator([model], Namespace(**gen_args))
         return model
 
     def valid_step(self, sample, model, criterion):
         
         #TODO: Seqeval evaluation
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
-       
+        
+        f1, clf_report = self._predict_with_seqeval(sample, model)
+        logging_output['f1'] = f1
+        
+        if self.args.clf_report:
+            logger.info("\n\n{}\n".format(clf_report))
+
         return loss, sample_size, logging_output
 
     def reduce_metrics(self, logging_outputs, criterion):
-        
         super().reduce_metrics(logging_outputs, criterion)
-        '''
-        if self.args.eval_f1:
 
-            def sum_logs(key):
-                return sum(log.get(key, 0) for log in logging_outputs)
+        def compute_f1(meters):               
+            f1_scores = [log.get('f1', 0) for log in logging_outputs]
+            n_sents = [log.get('nsentences', 0) for log in logging_outputs]
 
-            counts, totals = [], []
-            for i in range(EVAL_BLEU_ORDER):
-                counts.append(sum_logs('_bleu_counts_' + str(i)))
-                totals.append(sum_logs('_bleu_totals_' + str(i)))
+            ## compute weigted average by nsentences
+            avg_f1 = np.dot(f1_scores, n_sents) / sum(n_sents)
+            return avg_f1
 
-            if max(totals) > 0:
-                # log counts as numpy arrays -- log_scalar will sum them correctly
-                metrics.log_scalar('_bleu_counts', np.array(counts))
-                metrics.log_scalar('_bleu_totals', np.array(totals))
-                metrics.log_scalar('_bleu_sys_len', sum_logs('_bleu_sys_len'))
-                metrics.log_scalar('_bleu_ref_len', sum_logs('_bleu_ref_len'))
-
-                def compute_bleu(meters):
-                    import inspect
-                    import sacrebleu
-                    fn_sig = inspect.getfullargspec(sacrebleu.compute_bleu)[0]
-                    if 'smooth_method' in fn_sig:
-                        smooth = {'smooth_method': 'exp'}
-                    else:
-                        smooth = {'smooth': 'exp'}
-                    bleu = sacrebleu.compute_bleu(
-                        correct=meters['_bleu_counts'].sum,
-                        total=meters['_bleu_totals'].sum,
-                        sys_len=meters['_bleu_sys_len'].sum,
-                        ref_len=meters['_bleu_ref_len'].sum,
-                        **smooth
-                    )
-                    return round(bleu.score, 2)
-
-                metrics.log_derived('bleu', compute_bleu)
-        '''
+        metrics.log_derived('F1 score', compute_f1)
+        
 
     def max_positions(self):
         """Return the max sentence length allowed by the task."""
@@ -322,39 +286,46 @@ class SeqTaggingTask(FairseqTask):
         """Return the target :class:`~fairseq.data.Dictionary`."""
         return self.tgt_dict
 
-# TODO inference with seqeval
-    def _inference_with_bleu(self, generator, sample, model):
-        import sacrebleu
+   
+    def _predict_with_seqeval(self, sample, model):
+          # select target locations, that are not pad
+        
+        from seqeval.metrics import classification_report, f1_score
 
-        def decode(toks, escape_unk=False):
-            s = self.tgt_dict.string(
-                toks.int().cpu(),
-                self.args.eval_bleu_remove_bpe,
-                # The default unknown string in fairseq is `<unk>`, but
-                # this is tokenized by sacrebleu as `< unk >`, inflating
-                # BLEU scores. Instead, we use a somewhat more verbose
-                # alternative that is unlikely to appear in the real
-                # reference, but doesn't get split into multiple tokens.
-                unk_string=(
-                    "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
-                ),
-            )
-            if self.tokenizer:
-                s = self.tokenizer.decode(s)
-            return s
+        with torch.no_grad():
+            logits = model(**sample['net_input'])[0]
+            predictions = logits.argmax(dim=-1)
+            targets = model.get_targets(sample, [logits])
 
-        gen_out = self.inference_step(generator, [model], sample, None)
-        hyps, refs = [], []
-        for i in range(len(gen_out)):
-            hyps.append(decode(gen_out[i][0]['tokens']))
-            refs.append(decode(
-                utils.strip_pad(sample['target'][i], self.tgt_dict.pad()),
-                escape_unk=True,  # don't count <unk> as matches to the hypo
-            ))
-        if self.args.eval_bleu_print_samples:
-            logger.info('example hypothesis: ' + hyps[0])
-            logger.info('example reference: ' + refs[0])
-        if self.args.eval_tokenized_bleu:
-            return sacrebleu.corpus_bleu(hyps, [refs], tokenize='none')
-        else:
-            return sacrebleu.corpus_bleu(hyps, [refs])
+        
+        # making sure of dimensions
+        assert predictions.size() == targets.size()
+
+        predicted_labels = predictions.detach().cpu().numpy()
+        label_ids = targets.cpu().numpy()
+
+        y_true = []
+        y_pred = [] 
+        for i, cur_label in enumerate(label_ids):
+            temp_1 = []
+            temp_2 = []
+
+            for j, m in enumerate(cur_label):
+                if targets[i][j] not in [self.target_dictionary.bos(), self.target_dictionary.eos(), self.target_dictionary.pad()]:  # if it's a valid label
+                        temp_1.append(self.target_dictionary[m])
+                        temp_2.append(self.target_dictionary[predicted_labels[i][j]])
+
+            assert len(temp_1) == len(temp_2)
+            y_true.append(temp_1)
+            y_pred.append(temp_2)
+
+        report = classification_report(y_true, y_pred, digits=4)
+        f1 = f1_score(y_true, y_pred, average='macro')
+
+        return f1, report
+
+
+
+        
+        
+        
