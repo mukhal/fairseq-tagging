@@ -27,7 +27,7 @@ from fairseq.modules.transformer_sentence_encoder import init_bert_params
 logger = logging.getLogger(__name__)
 
 
-@register_model('sequence_tagger')
+@register_model('bert_sequence_tagger')
 class SequenceTagger(BaseFairseqModel):
     """
     Class for training a Masked Language Model. It also supports an
@@ -80,12 +80,6 @@ class SequenceTagger(BaseFairseqModel):
         parser.add_argument('--num-segment', type=int, metavar='N',
                             help='num segment in the input')
 
-        # Arguments related to sentence level prediction
-        parser.add_argument('--sentence-class-num', type=int, metavar='N',
-                            help='number of classes for sentence task')
-        parser.add_argument('--sent-loss', action='store_true', help='if set,'
-                            ' calculate sentence level predictions')
-
         # Arguments related to parameter initialization
         parser.add_argument('--apply-bert-init', action='store_true',
                             help='use custom param initialization for BERT')
@@ -131,7 +125,7 @@ class SeqEncoder(FairseqEncoder):
 
         self.padding_idx = source_dictionary.pad()
         self.vocab_size = source_dictionary.__len__()
-        self.n_labels = target_dictionary.__len__()
+        self.n_labels = target_dictionary.__len__() # labels for seq tagging
 
         self.max_positions = args.max_positions
 
@@ -154,7 +148,7 @@ class SeqEncoder(FairseqEncoder):
             learned_pos_embedding=args.encoder_learned_pos,
         )
 
-        self.share_input_output_embed = args.share_encoder_input_output_embed
+        self.share_input_output_embed = False
         self.embed_out = None
         self.sentence_projection_layer = None
         self.sentence_out_dim = args.sentence_class_num
@@ -181,7 +175,7 @@ class SeqEncoder(FairseqEncoder):
         )
 
 
-    def forward(self, src_tokens, segment_labels=None,non_pad=None, **unused):
+    def forward(self, src_tokens, segment_labels=None, non_pad=None, **unused):
         """
         Forward pass for Masked LM encoder. This first computes the token
         embedding using the token embedding matrix, position embeddings (if
@@ -257,7 +251,7 @@ class SeqEncoder(FairseqEncoder):
         return state_dict
 
 
-@register_model_architecture('sequence_tagger', 'sequence_tagger')
+@register_model_architecture('bert_sequence_tagger', 'bert_sequence_tagger')
 def base_architecture(args):
     args.dropout = getattr(args, 'dropout', 0.1)
     args.attention_dropout = getattr(args, 'attention_dropout', 0.1)
@@ -268,14 +262,11 @@ def base_architecture(args):
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 8)
 
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
-    args.share_encoder_input_output_embed = getattr(args, 'share_encoder_input_output_embed', False)
     args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
     args.no_token_positional_embeddings = getattr(args, 'no_token_positional_embeddings', False)
     args.num_segment = getattr(args, 'num_segment', 2)
 
     args.sentence_class_num = getattr(args, 'sentence_class_num', 2)
-    args.sent_loss = getattr(args, 'sent_loss', False)
-
     args.apply_bert_init = getattr(args, 'apply_bert_init', False)
 
     args.activation_fn = getattr(args, 'activation_fn', 'relu')
@@ -283,11 +274,10 @@ def base_architecture(args):
     args.encoder_normalize_before = getattr(args, 'encoder_normalize_before', False)
 
 
-@register_model_architecture('sequence_tagger', 'sequence_tagger_base')
+@register_model_architecture('bert_sequence_tagger', 'bert_sequence_tagger_base')
 def bert_base_architecture(args):
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
-    args.share_encoder_input_output_embed = getattr(
-        args, 'share_encoder_input_output_embed', True)
+
     args.no_token_positional_embeddings = getattr(
         args, 'no_token_positional_embeddings', False)
     args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', True)
@@ -299,7 +289,6 @@ def bert_base_architecture(args):
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 3072)
 
     args.sentence_class_num = getattr(args, 'sentence_class_num', 2)
-
     args.apply_bert_init = getattr(args, 'apply_bert_init', True)
 
     args.activation_fn = getattr(args, 'activation_fn', 'gelu')
@@ -308,17 +297,14 @@ def bert_base_architecture(args):
     base_architecture(args)
 
 
-## added tiny for experiments and debugging
-## TODO import from masked_lm.py
 
-@register_model_architecture('sequence_tagger', 'seq_tag_bert_tiny')
+@register_model_architecture('bert_sequence_tagger', 'bert_sequence_tagger_tiny')
 def bert_tiny_architecture(args):
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
     args.encoder_layers = getattr(args, 'encoder_layers', 2)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 2)
 
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 64)
-    args.share_encoder_input_output_embed = getattr(args, 'share_encoder_input_output_embed', False)
     args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
     args.no_token_positional_embeddings = getattr(args, 'no_token_positional_embeddings', False)
     args.num_segment = getattr(args, 'num_segment', 2)

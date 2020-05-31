@@ -162,8 +162,6 @@ class SeqTaggingTask(FairseqTask):
                             help='pad the target on the left')        
         parser.add_argument('--max-source-positions', default=1024, type=int, metavar='N',
                             help='max number of tokens in the source sequence')
-        parser.add_argument('--max-target-positions', default=1024, type=int, metavar='N',
-                            help='max number of tokens in the target sequence')
         parser.add_argument('--upsample-primary', default=1, type=int,
                             help='amount to upsample primary dataset')
         parser.add_argument('--truncate-source', action='store_true', default=False,
@@ -199,8 +197,10 @@ class SeqTaggingTask(FairseqTask):
         if args.source_lang is None or args.target_lang is None:
             raise Exception('Could not infer language pair, please provide it explicitly')
         
-        if args.max_source_positions != args.max_target_positions:
-            raise Exception('Max source and target must be the same for sequence tagging')
+        if args.max_source_positions is None:
+            raise Exception('Please specify max source positions!')
+
+        args.max_target_positions = args.max_source_positions # set source and target to be same length
         
         # load dictionaries
         src_dict = cls.load_dictionary(os.path.join(paths[0], 'dict.{}.txt'.format(args.source_lang)))
@@ -250,12 +250,9 @@ class SeqTaggingTask(FairseqTask):
         #TODO: Seqeval evaluation
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
         
-        f1, clf_report = self._predict_with_seqeval(sample, model)
+        f1, _ = self._predict_with_seqeval(sample, model)
         logging_output['f1'] = f1
         
-        if self.args.clf_report:
-            logger.info("\n\n{}\n".format(clf_report))
-
         return loss, sample_size, logging_output
 
     def reduce_metrics(self, logging_outputs, criterion):
@@ -269,6 +266,8 @@ class SeqTaggingTask(FairseqTask):
             avg_f1 = np.dot(f1_scores, n_sents) / sum(n_sents)
             return avg_f1
 
+
+        ## TODO reduce seqeval classification report
         metrics.log_derived('F1 score', compute_f1)
         
 

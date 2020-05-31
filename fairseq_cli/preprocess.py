@@ -134,13 +134,15 @@ def create_bpe(path_pref, spm_model):
         cur_target = []
         for word, tag in zip(s.split(), t.split()):
             enc_word = encode(word)
+            
             bpe_tags = [tag] + ['<pad>'] * (len(enc_word) - 1)
-
             cur_source.extend(enc_word)
             cur_target.extend(bpe_tags)
 
+        ## make sure 
         assert len(cur_source) == len(cur_target)
-
+        
+        # write bpe to files
         f_source_out.write(' '.join(cur_source) + '\n')
         f_target_out.write(' '.join(cur_target) + '\n')
 

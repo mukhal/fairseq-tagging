@@ -26,28 +26,12 @@ class SequenceTaggingLoss(FairseqCriterion):
         2) the sample size, which is used as the denominator for the gradient
         3) logging outputs to display while training
         """
-        
-        # select target locations, that are not pad
-        non_pad = sample['target'].ne(self.padding_idx)
-    
-        # Rare: when all tokens are masked, project all tokens.
-        # We use torch.where to avoid device-to-host transfers,
-        # except on CPU where torch.where is not well supported
-        # (see github.com/pytorch/pytorch/issues/26247).
-        if non_pad.device == torch.device('cpu'):
-            if not non_pad.any():
-                non_pad.fill_(True)
-        else:
-            non_pad = torch.where(
-                non_pad.any(),
-                non_pad,
-                non_pad.new([True]),
-            )
 
-        logits = model(**sample['net_input'], non_pad=non_pad)[0]
-        targets = model.get_targets(sample, [logits])
-        targets = targets[non_pad]
-    
+        non_pad = sample['target'].ne(self.padding_idx) # select labels that corespond to start of word bpe
+
+        logits = model(**sample['net_input'], non_pad= non_pad)[0]
+        targets = model.get_targets(sample, [logits])[non_pad]
+
         loss = modules.cross_entropy(
             logits.view(-1, logits.size(-1)),
             targets.view(-1),
@@ -55,7 +39,7 @@ class SequenceTaggingLoss(FairseqCriterion):
             ignore_index=self.padding_idx,
         )
 
-        sample_size = non_pad.int().sum()
+        sample_size = targets.ne(self.padding_idx).int().sum()
         logging_output = {
             'loss': loss.data,
             'ntokens': sample['ntokens'],
