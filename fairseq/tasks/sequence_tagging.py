@@ -170,7 +170,7 @@ class SeqTaggingTask(FairseqTask):
         # options for reporting F1 Score during validation
 
         parser.add_argument('--clf-report', action='store_true',
-                            help='whether to print detailed classification report during validation')
+                            help='whether to print detailed tagging report during validation')
 
         # fmt: on
 
@@ -243,6 +243,10 @@ class SeqTaggingTask(FairseqTask):
 
     def build_model(self, args):
         model = super().build_model(args)
+        if hasattr(model, 'register_tagging_head'):
+            logger.info("Registering Tagging Head")
+            model.register_tagging_head(name='tagging_head', num_classes=len(self.tgt_dict))
+        
         return model
 
     def valid_step(self, sample, model, criterion):
@@ -251,7 +255,7 @@ class SeqTaggingTask(FairseqTask):
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
         
         f1, _ = self._predict_with_seqeval(sample, model)
-        logging_output['f1'] = f1
+        logging_output['F1-Score'] = f1
         
         return loss, sample_size, logging_output
 
@@ -259,7 +263,7 @@ class SeqTaggingTask(FairseqTask):
         super().reduce_metrics(logging_outputs, criterion)
 
         def compute_f1(meters):               
-            f1_scores = [log.get('f1', 0) for log in logging_outputs]
+            f1_scores = [log.get('F1-Score', 0) for log in logging_outputs]
             n_sents = [log.get('nsentences', 0) for log in logging_outputs]
 
             ## compute weigted average by nsentences
@@ -267,8 +271,8 @@ class SeqTaggingTask(FairseqTask):
             return avg_f1
 
 
-        ## TODO reduce seqeval classification report
-        metrics.log_derived('F1 score', compute_f1)
+        ## TODO reduce seqeval tagging report
+        metrics.log_derived('F1-score', compute_f1)
         
 
     def max_positions(self):
@@ -292,7 +296,16 @@ class SeqTaggingTask(FairseqTask):
         from seqeval.metrics import classification_report, f1_score
 
         with torch.no_grad():
-            logits = model(**sample['net_input'])[0]
+            
+            if hasattr(model, 'tagging_heads') and 'tagging_head' in model.tagging_heads:
+                logits, _ = model(
+                **sample['net_input'],
+                features_only=True,
+                tagging_head_name='tagging_head',
+            )
+            else :
+                logits = model(**sample['net_input'])[0]
+            
             predictions = logits.argmax(dim=-1)
             targets = model.get_targets(sample, [logits])
 

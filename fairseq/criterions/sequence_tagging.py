@@ -29,9 +29,17 @@ class SequenceTaggingLoss(FairseqCriterion):
 
         non_pad = sample['target'].ne(self.padding_idx) # select labels that corespond to start of word bpe
 
-        logits = model(**sample['net_input'], non_pad= non_pad)[0]
+        if hasattr(model, 'tagging_heads') and 'tagging_head' in model.tagging_heads:
+            logits, _ = model(
+            **sample['net_input'],
+            features_only=True,
+            tagging_head_name='tagging_head',
+            non_pad=non_pad
+        )
+        else : 
+            logits = model(**sample['net_input'], non_pad= non_pad)[0]
+        
         targets = model.get_targets(sample, [logits])[non_pad]
-
         loss = modules.cross_entropy(
             logits.view(-1, logits.size(-1)),
             targets.view(-1),

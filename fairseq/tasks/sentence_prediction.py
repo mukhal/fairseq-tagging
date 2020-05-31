@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 @register_task('sentence_prediction')
 class SentencePredictionTask(FairseqTask):
     """
-    Sentence (or sentence pair) prediction (classification or regression) task.
+    Sentence (or sentence pair) prediction (tagging or regression) task.
 
     Args:
         dictionary (Dictionary): the dictionary for the input of the task
@@ -215,8 +215,8 @@ class SentencePredictionTask(FairseqTask):
         from fairseq import models
         model = models.build_model(args, self)
 
-        model.register_classification_head(
-            getattr(args, 'classification_head_name', 'sentence_classification_head'),
+        model.register_tagging_head(
+            getattr(args, 'tagging_head_name', 'sentence_tagging_head'),
             num_classes=self.args.num_classes,
         )
 

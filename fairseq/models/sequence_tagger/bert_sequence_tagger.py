@@ -149,7 +149,7 @@ class SeqEncoder(FairseqEncoder):
         )
 
         self.share_input_output_embed = False
-        self.embed_out = None
+        self.labels_out = None
         self.sentence_projection_layer = None
         self.sentence_out_dim = args.sentence_class_num
         self.lm_output_learned_bias = None
@@ -168,7 +168,7 @@ class SeqEncoder(FairseqEncoder):
 
         self.output_learned_bias = nn.Parameter(torch.zeros(self.n_labels))
 
-        self.embed_out = nn.Linear(
+        self.labels_out = nn.Linear(
             args.encoder_embed_dim,
             self.n_labels,
             bias=False
@@ -182,7 +182,7 @@ class SeqEncoder(FairseqEncoder):
         specified) and segment embeddings (if specified).
 
         Here we assume that the sentence representation corresponds to the
-        output of the classification_token (see bert_task or cross_lingual_lm
+        output of the tagging_token (see bert_task or cross_lingual_lm
         task for more details).
         Args:
             - src_tokens: B x T matrix representing sentences
@@ -192,7 +192,7 @@ class SeqEncoder(FairseqEncoder):
                 - logits for predictions in format B x T x C to be used in
                   softmax afterwards
                 - a dictionary of additional data, where 'pooled_output' contains
-                  the representation for classification_token and 'inner_states'
+                  the representation for tagging_token and 'inner_states'
                   is a list of internal model states used to compute the
                   predictions (similar in ELMO). 'sentence_logits'
                   is the prediction logit for NSP task and is only computed if
@@ -219,8 +219,8 @@ class SeqEncoder(FairseqEncoder):
                 and hasattr(self.sentence_encoder.embed_tokens, 'weight'):
             x = F.linear(x, self.sentence_encoder.embed_tokens.weight)
         
-        elif self.embed_out is not None:
-            x = self.embed_out(x)
+        elif self.labels_out is not None:
+            x = self.labels_out(x)
             x = x + self.output_learned_bias
     
         return x, {
@@ -243,7 +243,7 @@ class SeqEncoder(FairseqEncoder):
         if not self.load_softmax:
             for k in list(state_dict.keys()):
                 if (
-                    "embed_out.weight" in k or
+                    "labels_out.weight" in k or
                     "sentence_projection_layer.weight" in k or
                     "lm_output_learned_bias" in k
                 ):

@@ -26,13 +26,13 @@ from fairseq.modules import (
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 
-from .hub_interface import RobertaHubInterface
+from ..roberta.hub_interface import RobertaHubInterface
 
 
 logger = logging.getLogger(__name__)
 
 
-@register_model('roberta')
+@register_model('roberta_sequence_tagger')
 class RobertaModel(FairseqLanguageModel):
 
     @classmethod
@@ -107,8 +107,7 @@ class RobertaModel(FairseqLanguageModel):
         base_architecture(args)
 
         if not hasattr(args, 'max_positions'):
-            args.max_positions = args.tokens_per_sample
-
+            args.max_positions = args.max_source_positions
         encoder = RobertaEncoder(args, task.source_dictionary)
         return cls(args, encoder)
 
@@ -119,7 +118,7 @@ class RobertaModel(FairseqLanguageModel):
         x, extra = self.decoder(src_tokens, features_only, return_all_hiddens, **kwargs)
 
         if tagging_head_name is not None:
-            x = self.tagging_heads[tagging_head_name](x)
+            x = self.tagging_heads[tagging_head_name](x, **kwargs)
         return x, extra
 
     def register_tagging_head(self, name, num_classes=None, inner_dim=None, **kwargs):
@@ -162,54 +161,6 @@ class RobertaModel(FairseqLanguageModel):
         )
         return RobertaHubInterface(x['args'], x['task'], x['models'][0])
 
-    def upgrade_state_dict_named(self, state_dict, name):
-        super().upgrade_state_dict_named(state_dict, name)
-
-        prefix = name + '.' if name != '' else ''
-        current_head_names = [] if not hasattr(self, 'tagging_heads') else \
-            self.tagging_heads.keys()
-
-        # Handle new tagging heads present in the state dict.
-        keys_to_delete = []
-        for k in state_dict.keys():
-            if not k.startswith(prefix + 'tagging_heads.'):
-                continue
-
-            head_name = k[len(prefix + 'tagging_heads.'):].split('.')[0]
-            num_classes = state_dict[prefix + 'tagging_heads.' + head_name + '.out_proj.weight'].size(0)
-            inner_dim = state_dict[prefix + 'tagging_heads.' + head_name + '.dense.weight'].size(0)
-
-            if getattr(self.args, 'load_checkpoint_heads', False):
-                if head_name not in current_head_names:
-                    self.register_tagging_head(head_name, num_classes, inner_dim)
-            else:
-                if head_name not in current_head_names:
-                    logger.warning(
-                        'deleting tagging head ({}) from checkpoint '
-                        'not present in current model: {}'.format(head_name, k)
-                    )
-                    keys_to_delete.append(k)
-                elif (
-                    num_classes != self.tagging_heads[head_name].out_proj.out_features
-                    or inner_dim != self.tagging_heads[head_name].dense.out_features
-                ):
-                    logger.warning(
-                        'deleting tagging head ({}) from checkpoint '
-                        'with different dimensions than current model: {}'.format(head_name, k)
-                    )
-                    keys_to_delete.append(k)
-        for k in keys_to_delete:
-            del state_dict[k]
-
-        # Copy any newly-added tagging heads into the state dict
-        # with their current weights.
-        if hasattr(self, 'tagging_heads'):
-            cur_state = self.tagging_heads.state_dict()
-            for k, v in cur_state.items():
-                if prefix + 'tagging_heads.' + k not in state_dict:
-                    logger.info('Overwriting ' + prefix + 'tagging_heads.' + k)
-                    state_dict[prefix + 'tagging_heads.' + k] = v
-
 
 class RobertaLMHead(nn.Module):
     """Head for masked language modeling."""
@@ -251,8 +202,12 @@ class RobertaTaggingHead(nn.Module):
             nn.Linear(inner_dim, num_classes), q_noise, qn_block_size
         )
 
-    def forward(self, features, **kwargs):
-        x = features[:, 0, :]  # take <s> token (equiv. to [CLS])
+    def forward(self, features, non_pad=None, **kwargs):
+
+        x = features # take <s> token (equiv. to [CLS])
+        if non_pad is not None:
+            x = x[non_pad, :]
+
         x = self.dropout(x)
         x = self.dense(x)
         x = self.activation_fn(x)
@@ -346,7 +301,7 @@ class RobertaEncoder(FairseqDecoder):
         return self.args.max_positions
 
 
-@register_model_architecture('roberta', 'roberta')
+@register_model_architecture('roberta_sequence_tagger', 'roberta_sequence_tagger')
 def base_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
@@ -364,12 +319,12 @@ def base_architecture(args):
     args.encoder_layerdrop = getattr(args, 'encoder_layerdrop', 0.0)
 
 
-@register_model_architecture('roberta', 'roberta_base')
+@register_model_architecture('roberta_sequence_tagger', 'roberta_sequence_tagger_base')
 def roberta_base_architecture(args):
     base_architecture(args)
 
 
-@register_model_architecture('roberta', 'roberta_large')
+@register_model_architecture('roberta_sequence_tagger', 'roberta_sequence_tagger_large')
 def roberta_large_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 24)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1024)
@@ -378,10 +333,18 @@ def roberta_large_architecture(args):
     base_architecture(args)
 
 
-@register_model_architecture('roberta', 'xlm')
-def xlm_architecture(args):
-    args.encoder_layers = getattr(args, 'encoder_layers', 16)
-    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 1280)
-    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 1280*4)
+
+
+@register_model_architecture('roberta_sequence_tagger', 'roberta_sequence_tagger_tiny')
+def roberta_tiny_architecture(args):
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
+    args.encoder_layers = getattr(args, 'encoder_layers', 2)
+    args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 2)
+
+    args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 64)
+    args.encoder_learned_pos = getattr(args, 'encoder_learned_pos', False)
+    args.no_token_positional_embeddings = getattr(args, 'no_token_positional_embeddings', False)
+    args.num_segment = getattr(args, 'num_segment', 2)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 16)
+    args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
     base_architecture(args)
