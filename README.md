@@ -9,7 +9,7 @@ a Fairseq fork for sequence tagging/labeling tasks (NER, PSS Tagging, etc)
 
 #### 1. Prepare Data
 ```
-preprocess.py --seqtag-data-dir data/conll-2003 \
+python preprocess.py --seqtag-data-dir data/conll-2003 \
       --destdir data/conll-2003/bin \
       --nwordssrc 30000 \
       --bpe sentencepiece \
