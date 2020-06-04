@@ -1,6 +1,6 @@
 # Fairseq-tagger
 
-a Fairseq fork for sequence tagging/labeling tasks
+a Fairseq fork for sequence tagging/labeling tasks (NER, PSS Tagging, etc)
 
 
 
