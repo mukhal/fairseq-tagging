@@ -7,7 +7,7 @@ a Fairseq fork for sequence tagging/labeling tasks
 
 ### Getting Started 
 
-1. Prepare Data
+#### 1. Prepare Data
 ```
 preprocess.py --seqtag-data-dir data/conll-2003 \
       --destdir data/conll-2003/bin \
@@ -16,7 +16,7 @@ preprocess.py --seqtag-data-dir data/conll-2003 \
       --sentencepiece-model /path/to/sentencepiece.bpe.model
 ```
 
-2. Train 
+#### 2. Train 
 ```
 python train.py data/conll-2003/bin \ 
       --arch bert_sequence_tagger_tiny \
@@ -35,6 +35,8 @@ python train.py data/conll-2003/bin \
       --maximize-best-checkpoint-metric
 
 ```
+
+### Results
 
 ## Tasks
 
