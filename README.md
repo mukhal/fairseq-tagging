@@ -8,7 +8,7 @@
 Fairseq is a great tool for training seq2seq models. However, it was not meant for sequence tagging tasks such as Ner or PoS tagging, etc. This should help you utilize the full power of fairseq while using it on sequence labeling tasks.
 
 
-## Getting Started 
+## Example: Finetuning XLM-R for NER on Conll-2003
 
 ### 1. Prepare Data
 
@@ -40,8 +40,6 @@ python preprocess.py --seqtag-data-dir path/to/data/ \
 ```
 
 This converts data into `.source` and `.target` format and saves results to `path/to/data/fseq-outputs`:
-
-#### sample converted data:
 
 source:
 ```
