@@ -37,6 +37,14 @@ def get_generation_parser(interactive=False, default_task="translation"):
         add_interactive_args(parser)
     return parser
 
+def get_prediction_parser(interactive=False, default_task="translation"):
+    parser = get_parser("Prediction", default_task)
+    add_common_eval_args(parser)
+    add_dataset_args(parser, pred=True)
+    if interactive:
+        add_interactive_args(parser)
+    return parser
+
 
 def get_interactive_generation_parser(default_task="translation"):
     return get_generation_parser(interactive=True, default_task=default_task)
@@ -301,7 +309,7 @@ def add_preprocess_args(parser):
     return parser
 
 
-def add_dataset_args(parser, train=False, gen=False):
+def add_dataset_args(parser, train=False, gen=False, pred=False):
     group = parser.add_argument_group("Dataset and data loading")
     # fmt: off
     group.add_argument('--num-workers', default=1, type=int, metavar='N',
@@ -346,6 +354,10 @@ def add_dataset_args(parser, train=False, gen=False):
                            help='shard generation over N shards')
         group.add_argument('--shard-id', default=0, type=int, metavar='ID',
                            help='id of the shard to generate (id < num_shards)')
+    
+    if pred:
+        group.add_argument('--pred-subset', default='test', metavar='SPLIT',
+                           help='data subset to predict (train, valid, test)')
     # fmt: on
     return group
 

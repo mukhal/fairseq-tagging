@@ -18,24 +18,19 @@ from fairseq import bleu, checkpoint_utils, options, tasks, utils
 from fairseq.logging import progress_bar
 from fairseq.logging.meters import StopwatchMeter, TimeMeter
 from fairseq.data import encoders
-
+from seqeval.metrics import classification_report, f1_score
 
 def main(args):
 
-    assert args.path is not None, '--path required for generation!'
-    assert not args.sampling or args.nbest == args.beam, \
-        '--sampling requires --nbest to be equal to --beam'
-    assert args.replace_unk is None or args.dataset_impl == 'raw', \
-        '--replace-unk requires a raw text dataset (--dataset-impl=raw)'
+    assert args.path is not None, '--path required for prediction!'
 
     if args.results_path is not None:
         os.makedirs(args.results_path, exist_ok=True)
-        output_path = os.path.join(args.results_path, 'generate-{}.txt'.format(args.gen_subset))
+        output_path = os.path.join(args.results_path, 'predict-{}.txt'.format(args.pred_subset))
         with open(output_path, 'w', buffering=1) as h:
             return _main(args, h)
     else:
         return _main(args, sys.stdout)
-
 
 def _main(args, output_file):
     logging.basicConfig(
@@ -44,7 +39,7 @@ def _main(args, output_file):
         level=logging.INFO,
         stream=output_file,
     )
-    logger = logging.getLogger('fairseq_cli.generate')
+    logger = logging.getLogger('fairseq_cli.predict')
 
     utils.import_user_module(args)
 
@@ -56,7 +51,7 @@ def _main(args, output_file):
 
     # Load dataset splits
     task = tasks.setup_task(args)
-    task.load_dataset(args.gen_subset)
+    task.load_dataset(args.pred_subset)
 
     # Set dictionaries
     try:
@@ -73,7 +68,7 @@ def _main(args, output_file):
         task=task,
     )
 
-    # Optimize ensemble for generation
+    # Optimize ensemble for generation TODO
     for model in models:
         if args.fp16:
             model.half()
@@ -82,7 +77,7 @@ def _main(args, output_file):
 
     # Load dataset (possibly sharded)
     itr = task.get_batch_iterator(
-        dataset=task.dataset(args.gen_subset),
+        dataset=task.dataset(args.pred_subset),
         max_tokens=args.max_tokens,
         max_sentences=args.max_sentences,
         max_positions=utils.resolve_max_positions(
@@ -91,8 +86,6 @@ def _main(args, output_file):
         ),
         ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
         required_batch_size_multiple=args.required_batch_size_multiple,
-        num_shards=args.num_shards,
-        shard_id=args.shard_id,
         num_workers=args.num_workers,
     ).next_epoch_itr(shuffle=False)
     progress = progress_bar.progress_bar(
@@ -102,8 +95,6 @@ def _main(args, output_file):
         default_log_format=('tqdm' if not args.no_progress_bar else 'none'),
     )
 
-    # Initialize generator
-    gen_timer = StopwatchMeter()
 
     # Handle tokenization and BPE
     tokenizer = encoders.build_tokenizer(args)
@@ -117,55 +108,54 @@ def _main(args, output_file):
         return x
 
 
+    model = models[0] ## Use first model only, TODO ensembles
+    y_true = []
+    y_pred = []
+
     for sample in progress:
         sample = utils.move_to_cuda(sample) if use_cuda else sample
         if 'net_input' not in sample:
             continue
 
-        if args.prefix_size > 0:
-            prefix_tokens = sample['target'][:, :args.prefix_size]
-
-
         for i, sample_id in enumerate(sample['id'].tolist()):
-            has_target = sample['target'] is not None
 
             # Remove padding
             src_tokens = utils.strip_pad(sample['net_input']['src_tokens'][i, :], tgt_dict.pad())
-            target_tokens = None
-            if has_target:
-                target_tokens = utils.strip_pad(sample['target'][i, :], tgt_dict.pad()).int().cpu()
+            target_tokens = utils.strip_pad(sample['target'][i, :], tgt_dict.pad()).int().cpu()
 
-            # Either retrieve the original sentences or regenerate them from tokens.
+            ### Predict
+            _, _, y_true_, y_pred_ = task._predict_with_seqeval(sample, model) # get labels and predictions
+            y_true_ = y_true_[0]
+            y_pred_ = y_pred_[0]
+
+            y_true.append(y_true_) # append to all labels and predictions
+            y_pred.append(y_pred_)
+        
             if src_dict is not None:
                 src_str = src_dict.string(src_tokens, args.remove_bpe)
             else:
                 src_str = ""
 
-            print(src_str)
-
-            if has_target:
-                target_str = tgt_dict.string(
-                    target_tokens,
-                    args.remove_bpe,
-                    escape_unk=True,
-                )
+            target_str = tgt_dict.string(
+                target_tokens,
+                args.remove_bpe,
+                escape_unk=True,
+            )
 
             src_str = decode_fn(src_str)
-            if has_target:
-                target_str = decode_fn(target_str)
+            target_str = decode_fn(target_str)
+            pred_str = ' '.join(y_pred_)
 
             if not args.quiet:
-                if src_dict is not None:
-                    print('S-{}\t{}'.format(sample_id, src_str), file=output_file)
-                if has_target:
-                    print('T-{}\t{}'.format(sample_id, target_str), file=output_file)
+                print('S-{}\t{}'.format(sample_id, src_str), file=output_file)
+                print('P-{}\t{}'.format(sample_id, pred_str), file=output_file)
 
-            
-
+        clf_report = classification_report(y_true, y_pred)
+        logger.info("Eval results on {} subset: \n\n{} ".format(args.pred_subset, clf_report))
 
 
 def cli_main():
-    parser = options.get_generation_parser()
+    parser = options.get_prediction_parser()
     args = options.parse_args_and_arch(parser)
     main(args)
 
