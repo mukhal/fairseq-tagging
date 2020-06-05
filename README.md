@@ -27,7 +27,6 @@ IN IN B-PP O
 SURPRISE DT B-NP O
 DEFEAT NN I-NP O
 . . O O
-
 ```
 with `train.txt`, `valid.txt` and `test.txt` in `path/to/data/`
 
@@ -52,7 +51,6 @@ target:
 O B-LOC O O O O
 B-PER O O O
 O B-LOC O O O
-
 ```
 
 
@@ -75,7 +73,6 @@ python train.py data/conll-2003/bin \
       --max-epoch 20 \
       --best-checkpoint-metric F1-score \
       --maximize-best-checkpoint-metric
-
 ```
 
 ### Results
@@ -92,6 +89,7 @@ python train.py data/conll-2003/bin \
 - [x] save best model on validation data according to F1 score not loss
 - [x] work with BPE
 - [x] load and finetune pretrained BERT or RoBERTa 
+- [x] prediction/evaluation script
 - [ ] LSTM models
 
 
