@@ -254,7 +254,7 @@ class SeqTaggingTask(FairseqTask):
         #TODO: Seqeval evaluation
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
         
-        f1, _ = self._predict_with_seqeval(sample, model)
+        f1, _, _, _ = self._predict_with_seqeval(sample, model)
         logging_output['F1-Score'] = f1
         
         return loss, sample_size, logging_output
@@ -296,7 +296,6 @@ class SeqTaggingTask(FairseqTask):
         from seqeval.metrics import classification_report, f1_score
 
         with torch.no_grad():
-            
             if hasattr(model, 'tagging_heads') and 'tagging_head' in model.tagging_heads:
                 logits, _ = model(
                 **sample['net_input'],
@@ -334,7 +333,7 @@ class SeqTaggingTask(FairseqTask):
         report = classification_report(y_true, y_pred, digits=4)
         f1 = f1_score(y_true, y_pred, average='macro')
 
-        return f1, report
+        return f1, report, y_true, y_pred
 
 
 
