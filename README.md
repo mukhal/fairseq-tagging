@@ -1,5 +1,5 @@
 
-<img src="logo/logo.png" width="400" height="150">
+<img src="logo/logo.png" width="400" height="130">
 a Fairseq :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 
