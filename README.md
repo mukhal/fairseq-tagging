@@ -1,7 +1,7 @@
 
 <img src="logo/logo.png" width="500" height="130">
 
-   a [Fairseq](https://github.com/pytorch/fairseq) :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
+   a [Fairseq](https://github.com/pytorch/fairseq) fork :fork_and_knife: adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 
 ## Motivation
