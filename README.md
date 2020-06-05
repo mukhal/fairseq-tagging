@@ -1,6 +1,6 @@
 # Fairseq-tagging
 
-![](logo/logo.png)
+<img src="logo/logo.png" width="200" height="100">
 a Fairseq :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 
