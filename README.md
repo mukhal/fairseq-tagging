@@ -26,17 +26,19 @@ DEFEAT NN I-NP O
 . . O O
 
 ```
-with `train.txt`, `valid.txt` and `test.txt` in `data/conll-2003`
+with `train.txt`, `valid.txt` and `test.txt` in `path/to/data/`
 
 ```
-python preprocess.py --seqtag-data-dir data/conll-2003 \
-      --destdir data/conll-2003/bin \
+python preprocess.py --seqtag-data-dir path/to/data/ \
+      --destdir path/to/data/bin \
       --nwordssrc 30000 \
       --bpe sentencepiece \
       --sentencepiece-model /path/to/sentencepiece.bpe.model
 ```
 
-This converts data into `.source` and `.target` format:
+This converts data into `.source` and `.target` format and saves results to `path/to/data/fseq-outputs`:
+
+#### sample converted data:
 
 source:
 ```
