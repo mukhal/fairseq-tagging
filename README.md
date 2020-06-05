@@ -5,9 +5,9 @@ a Fairseq fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, et
 
 
 
-### Getting Started 
+## Getting Started 
 
-#### 1. Prepare Data
+### 1. Prepare Data
 
 Prepare your data is in the following IOB format: 
 
@@ -54,7 +54,10 @@ O B-LOC O O O
 
 ```
 
-#### 2. Train 
+
+### 2. Train 
+Let's train a tiny BERT (L=2, D=128, H=2) model from scratch:
+
 ```
 python train.py data/conll-2003/bin \ 
       --arch bert_sequence_tagger_tiny \
