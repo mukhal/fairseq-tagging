@@ -1,7 +1,11 @@
-# Fairseq-tagging
 
-![](logo/logo.png)
-a Fairseq :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
+<img src="logo/logo.png" width="500" height="130">
+
+   a [Fairseq](https://github.com/pytorch/fairseq) :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
+
+
+## Motivation
+Fairseq is a great tool for training seq2seq models. However, it was not meant for sequence tagging tasks such as Ner or PoS tagging, etc. This should help you utilize the full power of fairseq while using it on sequence labeling tasks.
 
 
 ## Getting Started 
@@ -78,11 +82,16 @@ python train.py data/conll-2003/bin \
 
 ### Results
 
-## Tasks
+#### NER
+
+
+
+
+
+## TODO
 
 - [x] log F1 metric on validation using Seqeva
 - [x] save best model on validation data according to F1 score not loss
-- [ ] `predict.py` script
 - [x] work with BPE
 - [x] load and finetune pretrained BERT or RoBERTa 
 - [ ] LSTM models
