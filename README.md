@@ -1,8 +1,6 @@
 # Fairseq-tagging
 
-a Fairseq :pushpin: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
-
-
+a Fairseq :fork_and_knife: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 
 ## Getting Started 
