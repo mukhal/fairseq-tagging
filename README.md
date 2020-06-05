@@ -1,6 +1,6 @@
 # Fairseq-tagging
 
-a Fairseq fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) :sunrise:
+a Fairseq :pushpin: fork adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 
 
