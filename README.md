@@ -9,9 +9,9 @@
 
 
 
-## Example: Finetuning XLM-R for NER on CoNLL-2003
+## Example: Training tiny BERT on NER (from scratch) on CoNLL-2003
 
-### 1. prepare Data
+### 1. Prepare Data
 
 Prepare your data is in the following IOB format: 
 
@@ -55,7 +55,7 @@ O B-LOC O O O
 ```
 
 
-### train 
+### 2. Train 
 Let's train a tiny BERT (L=2, D=128, H=2) model from scratch:
 
 ```
@@ -76,10 +76,13 @@ python train.py data/conll-2003/bin \
       --maximize-best-checkpoint-metric
 ```
 
-### predict and evaluate
+### 3. Predict and Evaluate
 ```
-python predict.py path/to/data/conll-2003/bin --path checkpoints/checkpoint_last.pt --task sequence_tagging -s source.bpe -t target.bpe --pred-subset test
-
+python predict.py path/to/data/conll-2003/bin \
+         --path checkpoints/checkpoint_last.pt \
+         --task sequence_tagging \
+         -s source.bpe -t target.bpe \
+         --pred-subset test
 ```
 This outputs 
 ```
@@ -91,10 +94,7 @@ This outputs
 
 micro avg     0.6724    0.6743    0.6734      1044
 macro avg     0.6706    0.6743    0.6722      1044
-
 ```
-
-
 
 ## TODO
 
