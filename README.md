@@ -5,12 +5,13 @@
 
 
 ## Motivation
-Fairseq is a great tool for training seq2seq models. However, it was not meant for sequence tagging tasks such as Ner or PoS tagging, etc. This should help you utilize the full power of fairseq while using it on sequence labeling tasks.
+> Fairseq is a great tool for training seq2seq models. However, it was not meant for sequence tagging tasks such as Ner or PoS tagging, etc. This should help you utilize the full power of fairseq while using it on sequence labeling tasks.
+
 
 
 ## Example: Finetuning XLM-R for NER on CoNLL-2003
 
-### 1. Prepare Data
+### 1. prepare Data
 
 Prepare your data is in the following IOB format: 
 
@@ -28,11 +29,11 @@ SURPRISE DT B-NP O
 DEFEAT NN I-NP O
 . . O O
 ```
-with `train.txt`, `valid.txt` and `test.txt` in `path/to/data/`
+with `train`, `valid` and `test` in `path/to/data/conll-2003`
 
 ```
-python preprocess.py --seqtag-data-dir path/to/data/ \
-      --destdir path/to/data/bin \
+python preprocess.py --seqtag-data-dir path/to/data/conll-2003 \
+      --destdir path/to/data/conll-2003 \
       --nwordssrc 30000 \
       --bpe sentencepiece \
       --sentencepiece-model /path/to/sentencepiece.bpe.model
@@ -54,7 +55,7 @@ O B-LOC O O O
 ```
 
 
-### 2. Train 
+### train 
 Let's train a tiny BERT (L=2, D=128, H=2) model from scratch:
 
 ```
@@ -75,11 +76,23 @@ python train.py data/conll-2003/bin \
       --maximize-best-checkpoint-metric
 ```
 
-### Results
+### predict and evaluate
+```
+python predict.py path/to/data/conll-2003/bin --path checkpoints/checkpoint_last.pt --task sequence_tagging -s source.bpe -t target.bpe --pred-subset test
 
-#### NER
+```
+This outputs 
+```
+    precision    recall  f1-score   support
 
+     PERS     0.7156    0.7506    0.7327       429
+      ORG     0.5285    0.5092    0.5187       273
+      LOC     0.7275    0.7105    0.7189       342
 
+micro avg     0.6724    0.6743    0.6734      1044
+macro avg     0.6706    0.6743    0.6722      1044
+
+```
 
 
 
