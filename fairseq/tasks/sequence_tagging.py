@@ -254,25 +254,35 @@ class SeqTaggingTask(FairseqTask):
         #TODO: Seqeval evaluation
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
         
-        f1, _, _, _ = self._predict_with_seqeval(sample, model)
-        logging_output['F1-Score'] = f1
-        
+        eval_dict = self._predict_with_seqeval(sample, model)
+        logging_output['F1-score'] = eval_dict['F1-score']
+        logging_output['Accuracy'] = eval_dict['Accuracy']
+
         return loss, sample_size, logging_output
 
     def reduce_metrics(self, logging_outputs, criterion):
         super().reduce_metrics(logging_outputs, criterion)
 
         def compute_f1(meters):               
-            f1_scores = [log.get('F1-Score', 0) for log in logging_outputs]
+            f1_scores = [log.get('F1-score', 0) for log in logging_outputs]
             n_sents = [log.get('nsentences', 0) for log in logging_outputs]
 
             ## compute weigted average by nsentences
             avg_f1 = np.dot(f1_scores, n_sents) / sum(n_sents)
             return avg_f1
 
+        def compute_acc(meters):               
+            accs = [log.get('Accuracy', 0) for log in logging_outputs]
+            n_sents = [log.get('nsentences', 0) for log in logging_outputs]
+
+            ## compute weigted average by nsentences
+            avg_acc = np.dot(accs, n_sents) / sum(n_sents)
+            return avg_acc
+
 
         ## TODO reduce seqeval tagging report
         metrics.log_derived('F1-score', compute_f1)
+        metrics.log_derived('Accuracy', compute_acc)
         
 
     def max_positions(self):
@@ -293,7 +303,7 @@ class SeqTaggingTask(FairseqTask):
     def _predict_with_seqeval(self, sample, model):
           # select target locations, that are not pad
         
-        from seqeval.metrics import classification_report, f1_score
+        from seqeval.metrics import classification_report, f1_score, accuracy_score
 
         with torch.no_grad():
             if hasattr(model, 'tagging_heads') and 'tagging_head' in model.tagging_heads:
@@ -330,10 +340,10 @@ class SeqTaggingTask(FairseqTask):
             y_true.append(temp_1)
             y_pred.append(temp_2)
 
-        report = classification_report(y_true, y_pred, digits=4)
         f1 = f1_score(y_true, y_pred, average='macro')
+        acc = accuracy_score(y_true, y_pred)
 
-        return f1, report, y_true, y_pred
+        return {'F1-score':f1, 'Accuracy':acc, 'y_true':y_true, 'y_pred':y_pred}
 
 
 
