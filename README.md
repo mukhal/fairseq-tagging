@@ -60,7 +60,7 @@ python train.py data/conll-2003/bin \
       --best-checkpoint-metric F1-score \
       --maximize-best-checkpoint-metric
 ```
-
+Training starts:
 ```
 epoch 001 | loss 2.313 | ppl 4.97 | F1-score 0 | wps 202.2 | ups 9.09 | wpb 18 | bsz 1.5 | num_updates 2 | lr 0.005 | gnorm 4.364 | clip 0 | train_wall 0 | wall 0                            
 epoch 002 | valid on 'valid' subset | loss 0.557 | ppl 1.47 | F1-score 0.666667 | wps 549.4 | wpb 18 | bsz 1.5 | num_updates 4 | best_F1-score 0.666667                                       
@@ -76,8 +76,9 @@ python predict.py path/to/data/conll-2003/bin \
          --task sequence_tagging \
          -s source.bpe -t target.bpe \
          --pred-subset test
+         --results-path model_outputs/
 ```
-This outputs 
+This writes source and prediction to `model_outputs/test.txt` and prints: 
 ```
     precision    recall  f1-score   support
 
