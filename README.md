@@ -13,10 +13,10 @@
 
 ### 1. Prepare Data
 
-Prepare your data is in the following IOB format: 
+Assumming your data is in the following IOB format: 
 
 ```
-SOCCER NN B-NP O
+SOCCER NN B-NP O 
 JAPAN NNP B-NP B-LOC
 GET VB B-VP O
 LUCKY NNP B-NP O
@@ -29,8 +29,9 @@ SURPRISE DT B-NP O
 DEFEAT NN I-NP O
 . . O O
 ```
-with `train`, `valid` and `test` in `path/to/data/conll-2003`
+with the 3 splits `train`, `valid` and `test` in `path/to/data/conll-2003`
 
+Run 
 ```
 python preprocess.py --seqtag-data-dir path/to/data/conll-2003 \
       --destdir path/to/data/conll-2003 \
@@ -38,22 +39,6 @@ python preprocess.py --seqtag-data-dir path/to/data/conll-2003 \
       --bpe sentencepiece \
       --sentencepiece-model /path/to/sentencepiece.bpe.model
 ```
-
-This converts data into `.source` and `.target` format and saves results to `path/to/data/fseq-outputs`:
-
-source:
-```
-SOCCER JAPAN GET LUCKY WIN ,
-CHINA IN SURPRISE DEFEAT
-SOCCER JAPAN GET LUCKY WIN
-```
-target:
-```
-O B-LOC O O O O
-B-PER O O O
-O B-LOC O O O
-```
-
 
 ### 2. Train 
 Let's train a tiny BERT (L=2, D=128, H=2) model from scratch:
