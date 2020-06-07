@@ -4,7 +4,7 @@
    a [Fairseq](https://github.com/pytorch/fairseq) fork :fork_and_knife: adapted for sequence tagging/labeling tasks (NER, POS Tagging, etc) 
 
 ## Motivation
-Fairseq is a great library to build sequence-to-sequence models. Unfortunately, it does not support sequence labeling tasks, and you will need to treat the task as seq2seq to make use of Fairseq. This will deprive you of fine-tuning pre-trained models such as RoBERTa XLM-R and BERT and will require you to nedlessly train an extra decoder network. I adapted Fairseq here for these tasks so that one is able to utilize the full power of fairseq when training on these tasks.
+Fairseq is a great library to build sequence-to-sequence models. Unfortunately, it does not support sequence labeling tasks, and you will need to treat the task as seq2seq to make use of Fairseq. This will deprive you of fine-tuning pre-trained models such as RoBERTa XLM-R and BERT and will require you to needlessly train an extra decoder network. I adapted Fairseq here for these tasks so that one is able to utilize the full power of fairseq when training on these tasks.
 
 
 
